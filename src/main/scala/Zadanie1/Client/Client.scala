@@ -1,7 +1,7 @@
 package Zadanie1.Client
 
 import java.io.{BufferedReader, InputStreamReader, PrintStream}
-import java.net.Socket
+import java.net.{DatagramPacket, DatagramSocket, InetAddress, MulticastSocket, Socket}
 
 import sun.misc.Signal
 
@@ -20,23 +20,34 @@ object Client extends App {
   }
 
   val serverPort = 8000
+  val multicastPort = 8001
   val serverAddress = "localhost"
-  val socket = new Socket(serverAddress, serverPort)
+  val inetAddress = InetAddress.getByName("localhost")
+
+  val udpSocket = new DatagramSocket()
+  val tcpSocket = new Socket(serverAddress, serverPort)
+  val multicastSocket = new MulticastSocket(multicastPort)
+  val groupAddress = InetAddress.getByName("230.0.0.0")
+  multicastSocket.joinGroup(groupAddress)
 
   Signal.handle(new Signal("INT"), (_: Signal) => {
     out.println(":quit")
-    socket.close()
+    tcpSocket.close()
+    udpSocket.close()
+    multicastSocket.leaveGroup(groupAddress)
+    multicastSocket.close()
     sys.exit(0)
   })
 
 
-  val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
-  val out = new PrintStream(socket.getOutputStream)
+  val in = new BufferedReader(new InputStreamReader(tcpSocket.getInputStream))
+  val out = new PrintStream(tcpSocket.getOutputStream)
 
-  out.println(name)
-
+  out.println(name + ":" + inetAddress.getHostName + ":" + udpSocket.getLocalPort)
 
   var stopped = false
+
+  //handle the tcp connection
   Future {
       while (!stopped) {
         val message = in.readLine()
@@ -44,11 +55,61 @@ object Client extends App {
       }
   }
 
+  //handle the udp connection
+  Future {
+    val receiveBuffer = Array.ofDim[Byte](1024)
+    while (!stopped) {
+      val receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length)
+      udpSocket.receive(receivePacket)
+
+      val msg = new String(receivePacket.getData)
+      println(msg)
+    }
+  }
+
+  //handle the multicast connection
+  Future {
+    val receiveBuffer = Array.ofDim[Byte](1024)
+    while (!stopped) {
+      val receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length)
+      multicastSocket.receive(receivePacket)
+
+      val msg = new String(receivePacket.getData)
+      println(msg)
+    }
+  }
+
+  //handle the user input
   var input = ""
+
+  def sendByUdp(address: InetAddress, port: Int, additional: String = ""): Unit = {
+    var udpInput = ""
+    while (!input.equalsIgnoreCase(":stop")){
+      input = readLine
+      udpInput += (input + "\n")
+    }
+    val msg = name + ":" + udpInput.replace(":stop", "") + additional
+    val bytes = msg.getBytes
+    val sendPacket = new DatagramPacket(bytes, bytes.length, address, port)
+    udpSocket.send(sendPacket)
+  }
+
   while (!input.equalsIgnoreCase(":quit")){
     input = readLine
-    out.println(input)
+
+    input.trim match {
+      case ":U" =>
+       sendByUdp(inetAddress, serverPort)
+      case ":M" =>
+        sendByUdp(groupAddress, multicastPort, "\nmulticast socket")
+      case _ =>
+        out.println(input)
+    }
   }
+
   stopped = true
-  socket.close()
+  tcpSocket.close()
+  udpSocket.close()
+  multicastSocket.leaveGroup(groupAddress)
+  multicastSocket.close()
 }

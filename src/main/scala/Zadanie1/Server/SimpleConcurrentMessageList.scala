@@ -1,13 +1,12 @@
 package Zadanie1.Server
 
-import scala.annotation.tailrec
 
 class SimpleConcurrentMessageList {
-  sealed trait MyList
-  case class Node(userName: String, message: String, time: Long,next: MyList) extends MyList
-  case object Empty extends MyList
+  private sealed trait MyList
+  private case class Node(userName: String, message: String, time: Long,next: MyList) extends MyList
+  private case object Empty extends MyList
 
-  var list: MyList = Empty
+  private var list: MyList = Empty
 
   def addMessage(userName: String, message: String, time: Long): Unit = synchronized {
 
