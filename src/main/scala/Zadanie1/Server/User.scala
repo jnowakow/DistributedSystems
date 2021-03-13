@@ -1,7 +1,7 @@
 package Zadanie1.Server
 
 import java.io.{BufferedReader, PrintStream}
-import java.net.{DatagramPacket, DatagramSocket, InetAddress, Socket}
+import java.net.{DatagramPacket, InetAddress, Socket}
 
 case class TcpConnection(socket: Socket, in: BufferedReader, out: PrintStream)
 
@@ -20,9 +20,11 @@ case class User(name: String, tcpConnection: TcpConnection, udpConnection: UdpCo
       None
   }
 
+  def blockingRead: String = in.readLine()
+
   def tcpWrite(msg: String): Unit = out.println(msg)
 
-  def closeTcp: Unit = tcpConnection.socket.close()
+  def closeTcp(): Unit = tcpConnection.socket.close()
 
   def createPacket(msg: String): DatagramPacket = {
     val bytes = msg.getBytes

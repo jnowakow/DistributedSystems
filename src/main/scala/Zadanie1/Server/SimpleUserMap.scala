@@ -12,5 +12,6 @@ class SimpleUserMap {
 
   def unregister(user: User): Unit = users -= user.name
 
+  def checkUserName(userName: String): Boolean = users.keySet contains userName
 
 }

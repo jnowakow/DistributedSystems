@@ -25,6 +25,8 @@ object Server extends App {
 
   println("--------Server Stared--------")
 
+
+  /*** handle new connections ***/
   Future {
     while (true) {
       val socket = serverSocket.accept()
@@ -35,12 +37,14 @@ object Server extends App {
       val address = InetAddress.getByName(hostName)
 
       val user = User(name, TcpConnection(socket, in, out), UdpConnection(address, port.toInt))
+
       UserThread(user, messageList, usersMap).start()
     }
   }
 
+  /*** handle incoming udp packets from users ***/
   Future {
-    while (true){
+    while (true) {
       val buffer = Array.ofDim[Byte](1024)
       val receivePacket = new DatagramPacket(buffer, buffer.length)
       udpSocket.receive(receivePacket)
@@ -56,7 +60,7 @@ object Server extends App {
     }
   }
 
-
+  /*** send messages from users overs tcp ***/
   while (true) {
     messageList.getMessage.foreach { case (userName, message) =>
 

@@ -1,19 +1,30 @@
 package Zadanie1.Server
 
-class UserThread(user: User, messageList: SimpleConcurrentMessageList, userMap: SimpleUserMap) extends Thread {
+class UserThread(var user: User, messageList: SimpleConcurrentMessageList, userMap: SimpleUserMap) extends Thread {
 
   private var stopped = false
 
-  override def run(): Unit = {
+  def registerUser() = {
+    while (userMap.checkUserName(user.name)) {
+      user.tcpWrite("Name taken")
 
+      val newName = user.blockingRead
+      user = user.copy(name = newName)
+    }
+    user.tcpWrite("ok")
     userMap.register(user)
     println(s"registered ${user.name}")
 
+  }
+
+  override def run(): Unit = {
+
+    registerUser()
 
     while (!stopped) {
       user.nonBlockingRead.foreach { message =>
-        if(message.equalsIgnoreCase(":quit")){
-          user.closeTcp
+        if (message.equalsIgnoreCase(":quit")) {
+          user.closeTcp()
           userMap.unregister(user)
           println(s"unregistered ${user.name}")
           stopped = true

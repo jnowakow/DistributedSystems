@@ -10,14 +10,8 @@ import scala.concurrent.Future
 import scala.io.StdIn.readLine
 
 object Client extends App {
-  val name = {
-    var n = ""
-    while (n == "") {
-      print("Enter Name: ")
-      n = readLine()
-    }
-    n.replace("\n", "")
-  }
+  print("Enter name: ")
+  var name = readLine
 
   val serverPort = 8000
   val multicastPort = 8001
@@ -27,7 +21,7 @@ object Client extends App {
   val udpSocket = new DatagramSocket()
   val tcpSocket = new Socket(serverAddress, serverPort)
   val multicastSocket = new MulticastSocket(multicastPort)
-  val groupAddress = InetAddress.getByName("230.0.0.0")
+  val groupAddress = InetAddress.getByName("228.5.6.7")
   multicastSocket.joinGroup(groupAddress)
 
   Signal.handle(new Signal("INT"), (_: Signal) => {
@@ -44,6 +38,12 @@ object Client extends App {
   val out = new PrintStream(tcpSocket.getOutputStream)
 
   out.println(name + ":" + inetAddress.getHostName + ":" + udpSocket.getLocalPort)
+
+  while (in.readLine() != "ok") {
+    print("Name is taken! Enter new name: ")
+    name = readLine
+    out.println(name)
+  }
 
   var stopped = false
 
@@ -75,23 +75,26 @@ object Client extends App {
       multicastSocket.receive(receivePacket)
 
       val msg = new String(receivePacket.getData)
-      println(msg)
+
+      //workaround
+      if (!msg.startsWith(name))
+        println(msg)
     }
   }
 
   //handle the user input
   var input = ""
 
-  def sendByUdp(address: InetAddress, port: Int, additional: String = ""): Unit = {
+  def sendByUdp(sock: DatagramSocket, address: InetAddress, port: Int, additional: String = ""): Unit = {
     var udpInput = ""
     while (!input.equalsIgnoreCase(":stop")){
       input = readLine
       udpInput += (input + "\n")
     }
-    val msg = name + ":" + udpInput.replace(":stop", "") + additional
+    val msg = name + ":" + additional + udpInput.replace(":stop", "")
     val bytes = msg.getBytes
     val sendPacket = new DatagramPacket(bytes, bytes.length, address, port)
-    udpSocket.send(sendPacket)
+    sock.send(sendPacket)
   }
 
   while (!input.equalsIgnoreCase(":quit")){
@@ -99,9 +102,9 @@ object Client extends App {
 
     input.trim match {
       case ":U" =>
-       sendByUdp(inetAddress, serverPort)
+        sendByUdp(udpSocket, inetAddress, serverPort)
       case ":M" =>
-        sendByUdp(groupAddress, multicastPort, "\nmulticast socket")
+        sendByUdp(multicastSocket, groupAddress, multicastPort, " multicast socket\n")
       case _ =>
         out.println(input)
     }
