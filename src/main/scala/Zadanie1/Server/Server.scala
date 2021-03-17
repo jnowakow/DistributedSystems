@@ -32,7 +32,7 @@ object Server extends App {
       val socket = serverSocket.accept()
       val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
       val out = new PrintStream(socket.getOutputStream)
-      //TODO obsługa kolizji nazw
+
       val name :: hostName :: port :: Nil = new String(in.readLine()).split(":").toList
       val address = InetAddress.getByName(hostName)
 
