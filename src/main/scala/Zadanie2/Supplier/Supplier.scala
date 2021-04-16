@@ -6,7 +6,6 @@ import Zadanie2.{declareExchange, declareQueue}
 import com.rabbitmq.client.{AMQP, BuiltinExchangeType, CancelCallback, Channel, ConnectionFactory, Consumer, DefaultConsumer, DeliverCallback, Envelope}
 
 
-
 object Supplier {
   val factory = new ConnectionFactory()
   factory.setHost("localhost")
@@ -46,7 +45,7 @@ object Supplier {
     val ackChannel = connection.createChannel()
     val ackExchangeName = "Acknowledgement"
 
-    declareExchange(ackChannel, ackExchangeName, BuiltinExchangeType.DIRECT, true)
+    declareExchange(ackChannel, ackExchangeName, BuiltinExchangeType.TOPIC, true)
     val ack = Ack(ackExchangeName, ackChannel)
     (admin, products, ack )
 
@@ -70,13 +69,14 @@ object Supplier {
         val orderId = UUID.randomUUID().toString
         val routingKey =  envelope.getRoutingKey
         val deliveryTag = envelope.getDeliveryTag
-        val name = routingKey.split("\\.")(0)
+        val customerId = routingKey.split("\\.").head
+        val name = customerId.split("#").head
         println(
           s"""Received: $msg from $name
              |order id: $orderId""".stripMargin
         )
 
-        ack.channel.basicPublish(ack.exchange, name,  null, s"order number $orderId".getBytes("UTF-8"))
+        ack.channel.basicPublish(ack.exchange, customerId,  null, s"order number $orderId".getBytes("UTF-8"))
 
         getChannel.basicAck(deliveryTag, false)
       }

@@ -1,4 +1,4 @@
-import com.rabbitmq.client.{BuiltinExchangeType, Channel}
+import com.rabbitmq.client.{BuiltinExchangeType, Channel, DeliverCallback}
 
 package object Zadanie2 {
 
@@ -8,5 +8,11 @@ package object Zadanie2 {
 
   def declareQueue(channel: Channel, name: String, durable: Boolean = false, exclusive: Boolean = false, autoDelete: Boolean = false): Unit = {
     channel.queueDeclare(name, durable, exclusive, autoDelete, null)
+  }
+
+  def callbackFactory(channel: Channel, prefix: String): DeliverCallback = (_, delivery) => {
+    val msg = new String(delivery.getBody, "UTF-8")
+    println(s"$prefix $msg")
+    channel.basicAck(delivery.getEnvelope.getDeliveryTag, false)
   }
 }

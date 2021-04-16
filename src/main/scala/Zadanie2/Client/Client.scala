@@ -1,6 +1,8 @@
 package Zadanie2.Client
 
-import Zadanie2.{declareExchange, declareQueue}
+import java.util.UUID
+
+import Zadanie2.{callbackFactory, declareExchange, declareQueue}
 import com.rabbitmq.client.{BuiltinExchangeType, CancelCallback, Channel, ConnectionFactory, DeliverCallback}
 
 import scala.io.StdIn.readLine
@@ -40,28 +42,26 @@ object Client {
     /** Client acknowledgement **/
     val ackChannel = connection.createChannel()
     val ackExchangeName = "Acknowledgement"
-    val ackQueueName = ackExchangeName.toLowerCase + "." + name.toLowerCase
+    val ackQueueName = ackExchangeName.toLowerCase + "." + name
 
-    declareExchange(ackChannel, ackExchangeName, BuiltinExchangeType.DIRECT, true)
+    declareExchange(ackChannel, ackExchangeName, BuiltinExchangeType.TOPIC, true)
     declareQueue(ackChannel, ackQueueName, exclusive = true, autoDelete = true)
-    ackChannel.queueBind(ackQueueName, ackExchangeName, name.toLowerCase)
+    ackChannel.queueBind(ackQueueName, ackExchangeName, name)
 
     val ack = Ack(ackQueueName, ackChannel)
     (admin, order, ack)
   }
 
-  def callbackFactory(channel: Channel, prefix: String): DeliverCallback = (_, delivery) => {
-    val msg = new String(delivery.getBody, "UTF-8")
-    println(s"$prefix $msg")
-    channel.basicAck(delivery.getEnvelope.getDeliveryTag, false)
-  }
 
 
   def main(args: Array[String]): Unit = {
     assert(args.length == 1, "Gave name to your client")
 
     val name = args(0)
-    val (admin, order, ack) = setUp(name)
+    val uid = UUID.randomUUID().toString
+    val id = name + "#" + uid
+
+    val (admin, order, ack) = setUp(id)
     val cancelCallback: CancelCallback = _ => {}
 
     val adminCallback: DeliverCallback = callbackFactory(admin.channel, "Admin:")
@@ -76,7 +76,7 @@ object Client {
     var input = readLine
     while (input != ":quit"){
 
-      order.channel.basicPublish(order.exchangeName, name.toLowerCase + "." + input, null, input.getBytes("UTF-8") )
+      order.channel.basicPublish(order.exchangeName, id + "." + input, null, input.getBytes("UTF-8") )
 
       input = readLine
     }
