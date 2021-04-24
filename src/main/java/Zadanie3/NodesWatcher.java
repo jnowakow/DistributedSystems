@@ -43,7 +43,7 @@ public class NodesWatcher implements Watcher, StatCallback {
         if (below == -1) {
             System.out.println("No node " + znode );
         } else {
-            System.out.println(znode + "has " + below + " descendants");
+            System.out.println(znode + " has " + below + " descendants");
         }
     }
 
